@@ -1,0 +1,22 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+    <link rel="stylesheet" type="text/css" href= {{url_for('static', filename="main.css")}}>
+</head>
+
+<body style = "text-align:center;">
+    <table id = "table" align = "center" border="1px"></table>
+
+    <script src = {{url_for('static', filename="updateProgress.js")}}></script>
+
+    <!-- https://stackoverflow.com/questions/30011170/flask-application-how-to-link-a-javascript-file-to-website -->
+    <script src = {{url_for('static', filename="createTable.js")}}></script>
+    <script>
+        // https://stackoverflow.com/questions/11178426/how-can-i-pass-data-from-flask-to-javascript-in-a-template
+        createTable( {{requests|tojson|safe}} );
+    </script>
+</body>
+
+</html>
