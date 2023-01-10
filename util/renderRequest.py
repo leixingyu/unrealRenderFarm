@@ -1,3 +1,4 @@
+import logging
 import socket
 import uuid
 import os
@@ -42,13 +43,12 @@ class RenderRequest(object):
             format='',
             start_frame=0,
             end_frame=0,
-            length=0,
             time_estimate='',
             progress=0
     ):
         self.uid = uid or str(uuid.uuid4())[:4]
         self.name = name
-        self.owner = socket.gethostname()
+        self.owner = owner or socket.gethostname()
         self.worker = worker
         self.time_created = time_created or datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
         self.priority = priority or 0
@@ -76,7 +76,7 @@ class RenderRequest(object):
             try:
                 request_dict = json.load(fp)
             except:
-                request_dict = dict()
+                return None
         return cls.from_dict(request_dict)
 
     @classmethod
@@ -88,9 +88,11 @@ class RenderRequest(object):
         :param d:
         :return:
         """
-        # has to assign a default value of '' or 0 for initialization value to kick-in
+        # has to assign a default value of '' or 0 for initialization
+        # value to kick-in
         uid = d.get('uid') or ''
         name = d.get('name') or ''
+        owner = d.get('owner') or ''
         worker = d.get('worker') or ''
         time_created = d.get('time_created') or ''
         priority = d.get('priority') or 0
@@ -113,6 +115,7 @@ class RenderRequest(object):
         return cls(
             uid=uid,
             name=name,
+            owner=owner,
             worker=worker,
             time_created=time_created,
             priority=priority,
@@ -181,6 +184,7 @@ def remove_all():
 
 def write_db(d):
     uid = d['uid']
+    logging.info('writing to %s', uid)
     with open(os.path.join(DATABASE, '{}.json'.format(uid)), 'w') as fp:
         json.dump(d, fp, indent=4)
 

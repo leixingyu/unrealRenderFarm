@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 import subprocess
 
@@ -6,18 +7,24 @@ from util import client
 from util import renderRequest
 
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-WORKER_NAME = 'TEST_MACHINE_01'
+
+MODULE_PATH = os.path.dirname(os.path.abspath(__file__))
+WORKER_NAME = 'RENDER_MACHINE_01'
+UNREAL_EXE = r'E:\Epic\UE_5.0\Engine\Binaries\Win64\UnrealEditor.exe'
+UNREAL_PROJECT = r"E:\Epic\UnrealProjects\SequencerTest\SequencerTest.uproject"
 
 
-def do():
+def render(uid, umap_path, useq_path, uconfig_path):
     command = [
-        "C:\Program Files\Epic Games\UE_5.0\Engine\Binaries\Win64\UnrealEditor-Cmd.exe",
-        "uproject",
+        UNREAL_EXE,
+        UNREAL_PROJECT,
 
-        "{}".format('path to map'),
-        "-LevelSequence={}".format('path to ls'),
-        "-MoviePipelineConfig={}".format('path to config'),
+        umap_path,
+        "-JobId={}".format(uid),
+        "-LevelSequence={}".format(useq_path),
+        "-MoviePipelineConfig={}".format(uconfig_path),
 
         "-game",
         "-MoviePipelineLocalExecutorClass=/Script/MovieRenderPipelineCore.MoviePipelinePythonHostExecutor",
@@ -27,45 +34,47 @@ def do():
         "-resX=1280",
         "-resY=720",
 
-        "-Log",
         "-StdOut",
-        "-allowStdOutLogVerbosity",
-        "-Unattended",
+        "-FullStdOutLogOutput"
     ]
+    env = os.environ.copy()
+    env["UE_PYTHONPATH"] = MODULE_PATH
     proc = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
-        stderr=subprocess.pipe
+        stderr=subprocess.PIPE,
+        env=env
     )
     return proc.communicate()
 
 
-def work(uids):
-    for uid in uids:
-        for i in range(20):
-            time.sleep(1)
-            logger.info("rendering job %s", uid)
-            client.update_request(
-                uid,
-                progress=5*i,
-                status=renderRequest.RenderStatus.in_progress,
-                time_estimate='N/A'
-            )
-        client.update_request(uid, 100, renderRequest.RenderStatus.finished, '00:00:00')
-        logger.info("finished rendering job %s", uid)
-        return True
-
-
-def run():
+if __name__ == '__main__':
+    logger.info('Starting render worker %s', WORKER_NAME)
     while True:
         rrequests = client.get_all_requests()
         uids = [rrequest.uid for rrequest in rrequests
-                if rrequest.worker == WORKER_NAME and rrequest.status == renderRequest.RenderStatus.ready_to_start]
-        work(uids)  # render blocks main loop
+                if rrequest.worker == WORKER_NAME and
+                rrequest.status == renderRequest.RenderStatus.ready_to_start]
+
+        # render blocks main loop
+        for uid in uids:
+            logger.info('rendering job %s', uid)
+
+            rrequest = renderRequest.RenderRequest.from_db(uid)
+            output = render(
+                uid,
+                rrequest.umap_path,
+                rrequest.useq_path,
+                rrequest.uconfig_path
+            )
+
+            # for debugging
+            for line in str(output).split(r'\r\n'):
+                if 'LogPython' in line:
+                    print(line)
+
+            logger.info("finished rendering job %s", uid)
 
         # check assigned job every 10 sec after previous job has finished
         time.sleep(10)
-
-
-if __name__ == '__main__':
-    run()
+        logger.info('current job(s) finished, searching for new job(s)')

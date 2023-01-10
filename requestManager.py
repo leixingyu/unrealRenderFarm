@@ -12,7 +12,7 @@ from flask import Flask
 from flask import request
 from flask import render_template
 
-from renderFarm.util import renderRequest
+from util import renderRequest
 
 
 MODULE_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -20,15 +20,12 @@ HTML_FOLDER = os.path.join(MODULE_PATH, 'html')
 
 # region HTTP REST API
 
-# https://stackoverflow.com/questions/31002890/how-to-reference-a-html-template-from-a-different-directory-in-python-flask
 app = Flask(__name__)
-app.config['JSON_SORT_KEYS'] = False
 logger = logging.getLogger(__name__)
 
 
 @app.route('/')
 def index_page():
-    import json
     rrequests = renderRequest.read_all()
     if not rrequests:
         return 'Welcome!'
@@ -75,23 +72,18 @@ def create_request():
 
 @app.put('/api/put/<uid>')
 def update_request(uid):
-    progress = request.args.get('progress') or 0
-    status = request.args.get('status') or ''
-    time_estimate = request.args.get('time_estimate') or ''
+    # unreal sends plain text
+    content = request.data.decode('utf-8')
+    progress, time_estimate, status = content.split(';')
 
-    request_dict = get_request(uid)
+    rr = renderRequest.RenderRequest.from_db(uid)
+    rr.update(
+        progress=int(float(progress)),
+        time_estimate=time_estimate,
+        status=status
+    )
 
-    if progress:
-        request_dict['progress'] = progress
-    if status:
-        request_dict['status'] = status
-    if time_estimate:
-        request_dict['time_estimate'] = time_estimate
-
-    rr = renderRequest.RenderRequest.from_dict(request_dict)
-    rr.write_json()
-
-    return request_dict
+    return rr.to_dict()
 
 
 # endregion
@@ -107,7 +99,7 @@ def new_request_trigger(rrequest):
         return
 
     # currently, as a test, assigns all job to one worker
-    worker = 'TEST_MACHINE_01'
+    worker = 'RENDER_MACHINE_01'
     assign_request(rrequest, worker)
 
     # minimal interval between assigning idle jobs
@@ -129,7 +121,13 @@ def assign_request(rrequest, worker):
 
 if __name__ == '__main__':
     import subprocess
+    import os
+
+    env = os.environ.copy()
+    env['PYTHONPATH'] += os.pathsep + MODULE_PATH
+
+    flask_exe = r'E:\Epic\UE_5.0\Engine\Binaries\ThirdParty\Python3\Win64\Scripts\flask.exe'
 
     # need to activate env
-    proc = subprocess.Popen('flask --app requestManager.py run')
-    logger.info(proc.communiate())
+    proc = subprocess.Popen('{flask} --app requestManager.py --debug run -h localhost -p 5000'.format(flask=flask_exe), env=env)
+    logger.info(proc.communicate())

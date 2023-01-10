@@ -15,6 +15,10 @@ def send(d):
 
 if __name__ == '__main__':
     job = {
-        'name': 'test'
+        'name': 'test',
+        'owner': 'TEST_SUBMITTER_01',
+        'umap_path': '/Game/Cinematics/Street/Level_Cin_Street.Level_Cin_Street',
+        'useq_path': '/Game/Cinematics/Street/LS_Master_Street.LS_Master_Street',
+        'uconfig_path': '/Game/Cinematics/Preset/Test.Test'
     }
     send(job)

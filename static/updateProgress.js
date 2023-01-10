@@ -3,7 +3,7 @@
 $(document).ready(function(){
     setInterval(
         function(){ajaxRequest()},
-        3000)
+        2000)
 })
 
 
