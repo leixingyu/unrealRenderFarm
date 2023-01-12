@@ -1,7 +1,7 @@
 import logging
 import os
-import time
 import subprocess
+import time
 
 from util import client
 from util import renderRequest
@@ -26,14 +26,17 @@ def render(uid, umap_path, useq_path, uconfig_path):
         "-LevelSequence={}".format(useq_path),
         "-MoviePipelineConfig={}".format(uconfig_path),
 
+        # required
         "-game",
         "-MoviePipelineLocalExecutorClass=/Script/MovieRenderPipelineCore.MoviePipelinePythonHostExecutor",
         "-ExecutorPythonClass=/Engine/PythonTypes.MyExecutor",
 
+        # render preview
         "-windowed",
         "-resX=1280",
         "-resY=720",
 
+        # logging
         "-StdOut",
         "-FullStdOutLogOutput"
     ]

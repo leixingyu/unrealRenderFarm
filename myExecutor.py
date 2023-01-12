@@ -1,4 +1,3 @@
-# Copyright Epic Games, Inc. All Rights Reserved.
 import unreal
 
 from util import renderRequest
@@ -24,7 +23,8 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
         )
 
     def parseArgument(self):
-        (cmdTokens, cmdSwitches, cmdParameters) = unreal.SystemLibrary.parse_command_line(unreal.SystemLibrary.get_command_line())
+        (cmdTokens, cmdSwitches, cmdParameters) = unreal.SystemLibrary.\
+            parse_command_line(unreal.SystemLibrary.get_command_line())
 
         self.mapPath = cmdTokens[0]
         self.jobId = cmdParameters['JobId']
@@ -37,13 +37,14 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
         job.sequence = unreal.SoftObjectPath(self.seqPath)
 
         presetPath = unreal.SoftObjectPath(self.presetPath)
-        uPreset = unreal.SystemLibrary.conv_soft_obj_path_to_soft_obj_ref(presetPath)
+        uPreset = unreal.SystemLibrary.\
+            conv_soft_obj_path_to_soft_obj_ref(presetPath)
         job.set_configuration(uPreset)
 
         return job
 
     @unreal.ufunction(override=True)
-    def execute_delayed(self, inPipelineQueue):
+    def execute_delayed(self, queue):
         self.parseArgument()
 
         #
@@ -52,7 +53,6 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
             outer=self.get_last_loaded_world(),
             base_type=unreal.MoviePipeline
         )
-
         self.pipeline.on_movie_pipeline_finished_delegate.add_function_unique(
             self,
             "on_movie_pipeline_finished"
@@ -75,14 +75,16 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
             return
 
         status = renderRequest.RenderStatus.in_progress
-        progress = 100 * unreal.MoviePipelineLibrary.get_completion_percentage(self.pipeline)
-        time_estimate = unreal.MoviePipelineLibrary.get_estimated_time_remaining(self.pipeline)
+        progress = 100 * unreal.MoviePipelineLibrary.\
+            get_completion_percentage(self.pipeline)
+        time_estimate = unreal.MoviePipelineLibrary.\
+            get_estimated_time_remaining(self.pipeline)
 
         if not time_estimate:
             time_estimate = unreal.Timespan.MAX_VALUE
 
         days, hours, minutes, seconds, _ = time_estimate.to_tuple()
-        time_estimate = '{}:{}:{}'.format(hours, minutes, seconds)
+        time_estimate = '{}h:{}m:{}s'.format(hours, minutes, seconds)
 
         self.send_http_request(
             '{}/api/put/{}'.format(SERVER_URL, self.jobId),
@@ -92,18 +94,18 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
         )
 
     @unreal.ufunction(ret=None, params=[int, int, str])
-    def on_http_response_recieved(self, inRequestIndex, inResponseCode, inMessage):
-        if inResponseCode == 200:
-            print(inMessage)
+    def on_http_response_recieved(self, index, code, message):
+        if code == 200:
+            unreal.log(message)
         else:
-            print('something wrong with the server!!')
+            unreal.log_error('something wrong with the server!!')
 
     @unreal.ufunction(override=True)
     def is_rendering(self):
         return False
 
     @unreal.ufunction(ret=None, params=[unreal.MoviePipeline, bool])
-    def on_movie_pipeline_finished(self, inMoviePipeline, error):
+    def on_movie_pipeline_finished(self, pipeline, error):
         self.pipeline = None
         unreal.log("Finished rendering movie!")
         self.on_executor_finished_impl()
@@ -121,4 +123,12 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
 
     @unreal.ufunction(ret=None, params=[unreal.MoviePipelineOutputData])
     def on_work_pipeline_finished(self, results):
-        unreal.log(results)
+        output_data = results
+        if output_data.success:
+            for shot_data in output_data.shot_data:
+                render_pass_data = shot_data.render_pass_data
+                for k, v in render_pass_data.items():
+                    if k.name == 'FinalImage':
+                        outputs = v.file_paths
+                        # get all final output images
+                        # unreal.log(outputs)
