@@ -1,7 +1,8 @@
 """
-Host the HTTP Server, provide REST API
+Remote Render HTTP Server with REST API
 
-Also assigns render request to worker
+Also manages render request (which currently only involves assigning
+jobs to worker)
 """
 
 import logging
@@ -27,6 +28,9 @@ FLASK_EXE = r'E:\Epic\UE_5.0\Engine\Binaries\ThirdParty\Python3\Win64\Scripts\fl
 
 @app.route('/')
 def index_page():
+    """
+    Server landing page
+    """
     rrequests = renderRequest.read_all()
     if not rrequests:
         return 'Welcome!'
@@ -38,6 +42,11 @@ def index_page():
 
 @app.get('/api/get')
 def get_all_requests():
+    """
+    Server GET api response, query database
+
+    :return: dict. an encapsulated dictionary with all render request serialized
+    """
     rrequests = renderRequest.read_all()
     jsons = [rrequest.to_dict() for rrequest in rrequests]
 
@@ -46,17 +55,34 @@ def get_all_requests():
 
 @app.get('/api/get/<uid>')
 def get_request(uid):
+    """
+    Server GET api response for a specific uid request, query database
+
+    :param uid: str. render request uid
+    :return: dict. a render request serialized as dictionary
+    """
     rr = renderRequest.RenderRequest.from_db(uid)
     return rr.to_dict()
 
 
 @app.delete('/api/delete/<uid>')
 def delete_request(uid):
-    return renderRequest.remove_db(uid)
+    """
+    Server DELETE api response, delete render request from database
+
+    :param uid: str. render request uid
+    """
+    renderRequest.remove_db(uid)
 
 
 @app.post('/api/post')
 def create_request():
+    """
+    Server POST api response handling, with json data attached, creates
+    a render request in database
+
+    :return: dict. newly created render request serialized as dictionary
+    """
     data = request.get_json(force=True)
     rrequest = renderRequest.RenderRequest.from_dict(data)
     rrequest.write_json()
@@ -67,6 +93,12 @@ def create_request():
 
 @app.put('/api/put/<uid>')
 def update_request(uid):
+    """
+    Server PUT api response handling, update render request in database
+
+    :param uid: str. uid of render request to update
+    :return: dict. updated render request serialized as dictionary
+    """
     # unreal sends plain text
     content = request.data.decode('utf-8')
     progress, time_estimate, status = content.split(';')
@@ -86,9 +118,7 @@ def update_request(uid):
 
 def new_request_trigger(rrequest):
     """
-    Triggers when a client post a new render request to the server
-
-    :return:
+    Triggers when a client posts a new render request to the server
     """
     if rrequest.worker:
         return
@@ -106,9 +136,8 @@ def assign_request(rrequest, worker):
     """
     Assign render request to worker
 
-    :param rrequest:
-    :param worker:
-    :return:
+    :param rrequest: renderRequest.RenderRequest. a render request object
+    :param worker: str. worker name
     """
     rrequest.assign(worker)
     rrequest.update(status=renderRequest.RenderStatus.ready_to_start)
@@ -125,7 +154,7 @@ if __name__ == '__main__':
         FLASK_EXE,
         '--app',
         'requestManager.py',
-        '--debug',
+        '--debug',  # debug mode to auto reload script changes
         'run',
         '-h',
         'localhost',

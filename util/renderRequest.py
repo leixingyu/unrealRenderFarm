@@ -1,3 +1,7 @@
+"""
+Unreal render job request class for data representation and database operation
+"""
+
 import logging
 import socket
 import uuid
@@ -12,16 +16,25 @@ DATABASE = os.path.join(ROOT_PATH, 'database')
 
 
 class RenderStatus(object):
+    """
+    Enum class to represent render job status
+    """
+
     unassigned = 'un-assigned'
     ready_to_start = 'ready to start'
     in_progress = 'in progress'
     finished = 'finished'
-    errorred = 'errorred'
+    errored = 'errored'
     cancelled = 'cancelled'
     paused = 'paused'
 
 
 class RenderRequest(object):
+    """
+    An object representing request for an Unreal render job sent from a
+    machine to the request manager (renderManager.py)
+    """
+
     def __init__(
             self,
             uid='',
@@ -46,6 +59,31 @@ class RenderRequest(object):
             time_estimate='',
             progress=0
     ):
+        """
+        Initialization
+
+        :param uid: str. unique identifier, server as primary key for database
+        :param name: str. job name
+        :param owner: str. the name of the submitter
+        :param worker: str. the name of the worker to render the job
+        :param time_created: str. datetime in .strftime("%m/%d/%Y, %H:%M:%S") format
+        :param priority: int. job priority [0 lowest to 100 highest]
+        :param category: str.
+        :param tags: [str].
+        :param status: RenderStatus. job render status
+        :param umap_path: str. Unreal path to the map/level asset
+        :param useq_path: str. Unreal path to the sequence asset
+        :param uconfig_path: str. Unreal path to the preset/config asset
+        :param output_path: str. system path to the output directory
+        :param width: int. output width
+        :param height: int. output height
+        :param frame_rate: int. output frame rate
+        :param format: int. output format
+        :param start_frame: int. custom render start frame
+        :param end_frame: int. custom render end frame
+        :param time_estimate: str. render time remaining estimate
+        :param progress: int. render progress [0 to 100]
+        """
         self.uid = uid or str(uuid.uuid4())[:4]
         self.name = name
         self.owner = owner or socket.gethostname()
@@ -71,6 +109,14 @@ class RenderRequest(object):
 
     @classmethod
     def from_db(cls, uid):
+        """
+        re-create a request object from database using uid
+
+        This is a fake database using json
+
+        :param uid: int. unique id from database
+        :return: RenderRequest. request object
+        """
         request_file = os.path.join(DATABASE, '{}.json'.format(uid))
         with open(request_file, 'r') as fp:
             try:
@@ -83,10 +129,10 @@ class RenderRequest(object):
     def from_dict(cls, d):
         """
         Create a new request object from partial dictionary/json or.
-        re-create a request object from exported dictionary/json from function 'to_json'
+        re-create a request object from function 'to_dict'
 
-        :param d:
-        :return:
+        :param d: dict. input dictionary
+        :return: RenderRequest. request object
         """
         # has to assign a default value of '' or 0 for initialization
         # value to kick-in
@@ -137,15 +183,34 @@ class RenderRequest(object):
         )
 
     def to_dict(self):
+        """
+        Convert current request to a dictionary
+        """
         return self.__dict__
 
     def write_json(self):
+        """
+        Write current request to the fake database (as a .json)
+        """
         write_db(self.__dict__)
 
     def remove(self):
+        """
+        Remove current request from the fake database
+        """
         remove_db(self.uid)
 
     def update(self, progress=0, status='', time_estimate=''):
+        """
+        Update current request progress in the fake database
+
+        used by the render worker (renderWorker.py)
+        there are fields we can restrict for updating
+
+        :param progress: int. new progress
+        :param status: RenderRequest. new render status
+        :param time_estimate: str. new time remaining estimate
+        """
         if progress:
             self.progress = progress
         if status:
@@ -156,12 +221,26 @@ class RenderRequest(object):
         write_db(self.__dict__)
 
     def assign(self, worker):
+        """
+        Update current request assignment in the fake database
+
+        used by the render manager (renderManager.py)
+
+        :param worker: str. new worker assigned
+        """
         self.worker = worker
 
         write_db(self.__dict__)
 
 
+# region database utility
+
 def read_all():
+    """
+    Read and convert everything in the database to RenderRequest objects
+
+    :return: [RenderRequest]. request objects present in the database
+    """
     rrequests = list()
     files = os.listdir(DATABASE)
     uids = [os.path.splitext(os.path.basename(f))[0] for f in files if f.endswith('.json')]
@@ -173,22 +252,32 @@ def read_all():
 
 
 def remove_db(uid):
+    """
+    Remove a RenderRequest object from the database
+
+    :param uid: str. request uid
+    """
     os.remove(os.path.join(DATABASE, '{}.json'.format(uid)))
 
 
 def remove_all():
+    """
+    Clear database
+    """
     files = os.path.join(DATABASE, '*.json')
     for file in files:
         os.remove(file)
 
 
 def write_db(d):
+    """
+    Write/overwrite a database entry
+
+    :param d: dict. RenderRequest object presented as a dictionary
+    """
     uid = d['uid']
     logging.info('writing to %s', uid)
     with open(os.path.join(DATABASE, '{}.json'.format(uid)), 'w') as fp:
         json.dump(d, fp, indent=4)
 
-
-if __name__ == '__main__':
-    a = RenderRequest()
-    a.write_json()
+# endregion

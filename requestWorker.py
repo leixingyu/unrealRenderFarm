@@ -1,3 +1,9 @@
+"""
+Client to work/process render request, which launches executor locally and
+updates status to the server
+"""
+
+
 import logging
 import os
 import subprocess
@@ -19,6 +25,20 @@ UNREAL_PROJECT = r"E:\Epic\UnrealProjects\SequencerTest\SequencerTest.uproject"
 
 
 def render(uid, umap_path, useq_path, uconfig_path):
+    """
+    Render a job locally using the custom executor (myExecutor.py)
+
+    Note:
+    I only listed the necessary arguments here,
+    we can easily add custom commandline flags like '-StartFrame', '-FrameRate' etc.
+    but we also need to implement in the MyExecutor class as well
+
+    :param uid: str. render request uid
+    :param umap_path: str. Unreal path to the map/level asset
+    :param useq_path: str. Unreal path to the sequence asset
+    :param uconfig_path: str. Unreal path to the preset/config asset
+    :return: (str. str). output and error messages
+    """
     command = [
         UNREAL_EXE,
         UNREAL_PROJECT,
