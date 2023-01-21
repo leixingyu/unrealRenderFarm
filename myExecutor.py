@@ -1,51 +1,49 @@
 import unreal
 
+from util import client
 from util import renderRequest
-
-
-SERVER_URL = 'http://localhost:5000'
 
 
 @unreal.uclass()
 class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
 
     pipeline = unreal.uproperty(unreal.MoviePipeline)
-    jobId = unreal.uproperty(unreal.Text)
+    job_id = unreal.uproperty(unreal.Text)
 
     def _post_init(self):
         self.pipeline = None
         self.queue = None
-        self.jobId = None
+        self.job_id = None
 
         self.http_response_recieved_delegate.add_function_unique(
             self,
             "on_http_response_recieved"
         )
 
-    def parseArgument(self):
-        (cmdTokens, cmdSwitches, cmdParameters) = unreal.SystemLibrary.\
+    def parse_argument(self):
+        (cmd_tokens, cmd_switches, cmd_parameters) = unreal.SystemLibrary.\
             parse_command_line(unreal.SystemLibrary.get_command_line())
 
-        self.mapPath = cmdTokens[0]
-        self.jobId = cmdParameters['JobId']
-        self.seqPath = cmdParameters['LevelSequence']
-        self.presetPath = cmdParameters['MoviePipelineConfig']
+        self.map_path = cmd_tokens[0]
+        self.job_id = cmd_parameters['JobId']
+        self.seq_path = cmd_parameters['LevelSequence']
+        self.preset_path = cmd_parameters['MoviePipelineConfig']
 
-    def addJob(self):
+    def add_job(self):
         job = self.queue.allocate_new_job(unreal.MoviePipelineExecutorJob)
-        job.map = unreal.SoftObjectPath(self.mapPath)
-        job.sequence = unreal.SoftObjectPath(self.seqPath)
+        job.map = unreal.SoftObjectPath(self.map_path)
+        job.sequence = unreal.SoftObjectPath(self.seq_path)
 
-        presetPath = unreal.SoftObjectPath(self.presetPath)
-        uPreset = unreal.SystemLibrary.\
-            conv_soft_obj_path_to_soft_obj_ref(presetPath)
-        job.set_configuration(uPreset)
+        preset_path = unreal.SoftObjectPath(self.preset_path)
+        u_preset = unreal.SystemLibrary.\
+            conv_soft_obj_path_to_soft_obj_ref(preset_path)
+        job.set_configuration(u_preset)
 
         return job
 
     @unreal.ufunction(override=True)
     def execute_delayed(self, queue):
-        self.parseArgument()
+        self.parse_argument()
 
         #
         self.pipeline = unreal.new_object(
@@ -55,16 +53,16 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
         )
         self.pipeline.on_movie_pipeline_finished_delegate.add_function_unique(
             self,
-            "on_movie_pipeline_finished"
+            "on_job_finished"
         )
         self.pipeline.on_movie_pipeline_work_finished_delegate.add_function_unique(
             self,
-            "on_work_pipeline_finished"
+            "on_pipeline_finished"
         )
 
         #
         self.queue = unreal.new_object(unreal.MoviePipelineQueue, outer=self)
-        job = self.addJob()
+        job = self.add_job()
         self.pipeline.initialize(job)
 
     @unreal.ufunction(override=True)
@@ -87,7 +85,7 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
         time_estimate = '{}h:{}m:{}s'.format(hours, minutes, seconds)
 
         self.send_http_request(
-            '{}/api/put/{}'.format(SERVER_URL, self.jobId),
+            '{}/put/{}'.format(client.SERVER_API_URL, self.job_id),
             "PUT",
             '{};{};{}'.format(progress, time_estimate, status),
             unreal.Map(str, str)
@@ -105,7 +103,7 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
         return False
 
     @unreal.ufunction(ret=None, params=[unreal.MoviePipeline, bool])
-    def on_movie_pipeline_finished(self, pipeline, error):
+    def on_job_finished(self, pipeline, error):
         self.pipeline = None
         unreal.log("Finished rendering movie!")
         self.on_executor_finished_impl()
@@ -115,14 +113,14 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
         time_estimate = 'N/A'
         status = renderRequest.RenderStatus.finished
         self.send_http_request(
-            '{}/api/put/{}'.format(SERVER_URL, self.jobId),
+            '{}/put/{}'.format(client.SERVER_API_URL, self.job_id),
             "PUT",
             '{};{};{}'.format(progress, time_estimate, status),
             unreal.Map(str, str)
         )
 
     @unreal.ufunction(ret=None, params=[unreal.MoviePipelineOutputData])
-    def on_work_pipeline_finished(self, results):
+    def on_pipeline_finished(self, results):
         output_data = results
         if output_data.success:
             for shot_data in output_data.shot_data:

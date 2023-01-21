@@ -1,19 +1,20 @@
 import logging
 import requests
 
-
 from . import renderRequest
 
 
-logger = logging.getLogger(__name__)
-HOST_URL = 'http://127.0.0.1:5000/api'
+LOGGER = logging.getLogger(__name__)
+
+SERVER_URL = 'http://127.0.0.1:5000'
+SERVER_API_URL = SERVER_URL + '/api'
 
 
 def get_all_requests():
     try:
-        response = requests.get(HOST_URL + '/get')
+        response = requests.get(SERVER_API_URL+'/get')
     except requests.exceptions.ConnectionError:
-        logger.error('failed to connect to server %s', HOST_URL)
+        LOGGER.error('failed to connect to server %s', SERVER_API_URL)
         return
 
     results = response.json()['results']
@@ -22,9 +23,9 @@ def get_all_requests():
 
 def get_request(uid):
     try:
-        response = requests.get(HOST_URL + '/get/{}'.format(uid))
+        response = requests.get(SERVER_API_URL+'/get/{}'.format(uid))
     except requests.exceptions.ConnectionError:
-        logger.error('failed to connect to server %s', HOST_URL)
+        LOGGER.error('failed to connect to server %s', SERVER_API_URL)
         return
 
     return renderRequest.RenderRequest.from_dict(response.json())
@@ -32,31 +33,26 @@ def get_request(uid):
 
 def add_request(d):
     try:
-        response = requests.post(HOST_URL + '/post', json=d)
+        response = requests.post(SERVER_API_URL+'/post', json=d)
     except requests.exceptions.ConnectionError:
-        logger.error('failed to connect to server %s', HOST_URL)
+        LOGGER.error('failed to connect to server %s', SERVER_API_URL)
         return
     return renderRequest.RenderRequest.from_dict(response.json())
 
 
 def remove_request(uid):
     try:
-        response = requests.delete(HOST_URL + '/delete/{}'.format(uid))
+        response = requests.delete(SERVER_API_URL+'/delete/{}'.format(uid))
     except requests.exceptions.ConnectionError:
-        logger.error('failed to connect to server %s', HOST_URL)
+        LOGGER.error('failed to connect to server %s', SERVER_API_URL)
         return
     return renderRequest.RenderRequest.from_dict(response.json())
 
 
-def update_request(
-        uid,
-        progress=0,
-        status='',
-        time_estimate=''
-):
+def update_request(uid, progress=0, status='', time_estimate=''):
     try:
         response = requests.put(
-            HOST_URL + '/put/{}'.format(uid),
+            SERVER_API_URL+'/put/{}'.format(uid),
             params={
                 'progress': progress,
                 'status': status,
@@ -64,7 +60,7 @@ def update_request(
             }
         )
     except requests.exceptions.ConnectionError:
-        logger.error('failed to connect to server %s', HOST_URL)
+        LOGGER.error('failed to connect to server %s', SERVER_API_URL)
         return
 
     return renderRequest.RenderRequest.from_dict(response.json())

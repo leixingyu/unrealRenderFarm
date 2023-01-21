@@ -18,10 +18,11 @@ from util import renderRequest
 MODULE_PATH = os.path.dirname(os.path.abspath(__file__))
 HTML_FOLDER = os.path.join(MODULE_PATH, 'html')
 
-# region HTTP REST API
+LOGGER = logging.getLogger(__name__)
 
+# region HTTP REST API
 app = Flask(__name__)
-logger = logging.getLogger(__name__)
+FLASK_EXE = r'E:\Epic\UE_5.0\Engine\Binaries\ThirdParty\Python3\Win64\Scripts\flask.exe'
 
 
 @app.route('/')
@@ -40,12 +41,6 @@ def get_all_requests():
     rrequests = renderRequest.read_all()
     jsons = [rrequest.to_dict() for rrequest in rrequests]
 
-    # before = request.args.get('before') or '9999'
-    # after = request.args.get('after') or '0'
-    #
-    # filtered = list(
-    #     filter(lambda item: int(before) > item['publication_year'] > int(after), STORAGE.values())
-    # )
     return {"results": jsons}
 
 
@@ -102,9 +97,9 @@ def new_request_trigger(rrequest):
     worker = 'RENDER_MACHINE_01'
     assign_request(rrequest, worker)
 
-    # minimal interval between assigning idle jobs
-    time.sleep(2)
-    logger.info('assigned job %s to %s', rrequest.uid, worker)
+    # if multiple jobs came in at once, interval between each assignment
+    time.sleep(4)
+    LOGGER.info('assigned job %s to %s', rrequest.uid, worker)
 
 
 def assign_request(rrequest, worker):
@@ -126,8 +121,17 @@ if __name__ == '__main__':
     env = os.environ.copy()
     env['PYTHONPATH'] += os.pathsep + MODULE_PATH
 
-    flask_exe = r'E:\Epic\UE_5.0\Engine\Binaries\ThirdParty\Python3\Win64\Scripts\flask.exe'
+    command = [
+        FLASK_EXE,
+        '--app',
+        'requestManager.py',
+        '--debug',
+        'run',
+        '-h',
+        'localhost',
+        '-p',
+        '5000'
+    ]
 
-    # need to activate env
-    proc = subprocess.Popen('{flask} --app requestManager.py --debug run -h localhost -p 5000'.format(flask=flask_exe), env=env)
-    logger.info(proc.communicate())
+    proc = subprocess.Popen(command, env=env)
+    LOGGER.info(proc.communicate())

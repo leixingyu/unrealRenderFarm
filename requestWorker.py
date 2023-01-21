@@ -8,9 +8,11 @@ from util import renderRequest
 
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 MODULE_PATH = os.path.dirname(os.path.abspath(__file__))
+
+# render worker specific configuration
 WORKER_NAME = 'RENDER_MACHINE_01'
 UNREAL_EXE = r'E:\Epic\UE_5.0\Engine\Binaries\Win64\UnrealEditor.exe'
 UNREAL_PROJECT = r"E:\Epic\UnrealProjects\SequencerTest\SequencerTest.uproject"
@@ -52,7 +54,7 @@ def render(uid, umap_path, useq_path, uconfig_path):
 
 
 if __name__ == '__main__':
-    logger.info('Starting render worker %s', WORKER_NAME)
+    LOGGER.info('Starting render worker %s', WORKER_NAME)
     while True:
         rrequests = client.get_all_requests()
         uids = [rrequest.uid for rrequest in rrequests
@@ -61,7 +63,7 @@ if __name__ == '__main__':
 
         # render blocks main loop
         for uid in uids:
-            logger.info('rendering job %s', uid)
+            LOGGER.info('rendering job %s', uid)
 
             rrequest = renderRequest.RenderRequest.from_db(uid)
             output = render(
@@ -72,12 +74,12 @@ if __name__ == '__main__':
             )
 
             # for debugging
-            for line in str(output).split(r'\r\n'):
-                if 'LogPython' in line:
-                    print(line)
+            # for line in str(output).split(r'\r\n'):
+            #     if 'LogPython' in line:
+            #         print(line)
 
-            logger.info("finished rendering job %s", uid)
+            LOGGER.info("finished rendering job %s", uid)
 
         # check assigned job every 10 sec after previous job has finished
         time.sleep(10)
-        logger.info('current job(s) finished, searching for new job(s)')
+        LOGGER.info('current job(s) finished, searching for new job(s)')
