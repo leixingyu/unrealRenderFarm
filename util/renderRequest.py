@@ -10,6 +10,8 @@ import json
 from datetime import datetime
 
 
+LOGGER = logging.getLogger(__name__)
+
 MODULE_PATH = os.path.dirname(os.path.abspath(__file__))
 ROOT_PATH = os.path.dirname(MODULE_PATH)
 DATABASE = os.path.join(ROOT_PATH, 'database')
@@ -121,7 +123,8 @@ class RenderRequest(object):
         with open(request_file, 'r') as fp:
             try:
                 request_dict = json.load(fp)
-            except:
+            except Exception as e:
+                LOGGER.error('Failed to load request object from db: %s', e)
                 return None
         return cls.from_dict(request_dict)
 
@@ -276,7 +279,7 @@ def write_db(d):
     :param d: dict. RenderRequest object presented as a dictionary
     """
     uid = d['uid']
-    logging.info('writing to %s', uid)
+    LOGGER.info('writing to %s', uid)
     with open(os.path.join(DATABASE, '{}.json'.format(uid)), 'w') as fp:
         json.dump(d, fp, indent=4)
 

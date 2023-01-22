@@ -2,6 +2,7 @@
 My custom render executor for remote/distributed rendering
 """
 
+import time
 import unreal
 
 from util import client
@@ -164,6 +165,8 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
         self.pipeline = None
         unreal.log("Finished rendering movie!")
         self.on_executor_finished_impl()
+
+        time.sleep(1)
 
         # update to server
         progress = 100

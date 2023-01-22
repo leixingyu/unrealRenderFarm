@@ -104,12 +104,14 @@ def update_request(uid):
     progress, time_estimate, status = content.split(';')
 
     rr = renderRequest.RenderRequest.from_db(uid)
+    if not rr:
+        return {}
+
     rr.update(
         progress=int(float(progress)),
         time_estimate=time_estimate,
         status=status
     )
-
     return rr.to_dict()
 
 
